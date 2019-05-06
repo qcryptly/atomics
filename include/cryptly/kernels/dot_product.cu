@@ -1,0 +1,65 @@
+#include "cryptly/cuda_ops.hxx"
+#include "cryptly/kernels/dot_product.hxx"
+
+template<int BSize = 256, class TArg = std::uint64_t>
+__global__
+void dot_product_cuda(std::size_t N, const TArg* a, const TArg* b, TArg* r){
+	int index = blockIdx.x*blockDim.x + threadIdx.x;
+	int stride = blockDim.x * gridDim.x;
+	__shared__ TArg agg[BSize];
+	agg[threadIdx.x] = 0;
+	// Map
+	for (int i = index; i < N; i += stride) {
+		agg[threadIdx.x] += a[i] * b[i];
+	}
+
+	// Wait for all block threads to finish
+	__syncthreads();
+
+	// Reduce everything
+	// Use one writer,
+	// warp divergence
+	if (threadIdx.x == 0) {
+		r[blockIdx.x] = 0; 
+		for (int i = 0; i < blockDim.x; i ++) {
+			r[blockIdx.x] += agg[i];
+		}
+	}
+}
+
+template<class T, typename... Ts>
+int dot_product_impl<T, Ts...>::operator()(const kernel_ps_t& ps,
+	std::size_t N, const T* a_i, const T* b_i, T& r_o) {
+	T* cuda_mem_a, cuda_mem_b, cuda_mem_r;
+	auto size_n = sizeof(T) * N;
+	auto size_r = sizeof(T) * ps.grid_size;
+	// Allocate on Device
+	_r(cudaMalloc(&cuda_mem_a, size_n));	
+	_r(cudaMalloc(&cuda_mem_b, size_n));	
+	_r(cudaMalloc(&cuda_mem_r, size_r));	
+
+	// Copy Host to Device
+	_r(cudaMemcpy(cuda_mem_a, a_i, size_n, cudaMemcpyHostToDevice));
+	_r(cudaMemcpy(cuda_mem_b, b_i, size_n, cudaMemcpyHostToDevice));
+
+	// Run Kernel
+	// Hard code grid size for now
+	dot_product_cuda<256, T><<<ps.grid_size, ps.block_size, ps.shared_size, (CUstream_st*)ps.cuda_stream>>>(ps, N, cuda_mem_a, cuda_mem_b, cuda_mem_r);	
+	
+	cudaDeviceSynchronize();
+	// Copy Device to Host
+	T results[ps.grid_size];
+	_r(cudaMemcpy(results, cuda_mem_r, size_r, cudaMemcpyDeviceToHost));
+
+	// Simple aggregation
+	std::uint64_t product{};
+	for(int i = 0; i < ps.grid_size; i++) {
+		product += results[i];
+	}
+
+	// Serialize and print results
+	cudaFree(cuda_mem_a);
+	cudaFree(cuda_mem_b);
+	cudaFree(cuda_mem_r);
+	r_o = product;
+}

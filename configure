@@ -1,0 +1,76 @@
+#!/bin/bash
+set -x
+base_dir=$(pwd)
+CUDA_PATH=$CUDA_PATH
+SM_ARCH=$SM_ARCH
+could_not_find_cuda() {
+	echo "Could not find cuda installations"
+	echo "If it's not in /usr/local/cuda-* please provide CUDA_PATH=/my/path/cuda-{version} ./configure"
+	echo "Example: CUDA_PATH=/usr/local/cuda-10.1 ./configure"
+	exit 1
+}
+
+get_default_cuda() {
+	cuda_dirs_count=$(ls -d /usr/local/cuda-* | wc -l)
+	if [ "$cuda_dirs_count" -gt 0 ]; then
+		CUDA_PATH="$(ls -d /usr/local/cuda-* | head -n 1)"
+		return 0
+	fi
+	return could_not_find_cuda
+}
+
+get_cuda_path() {
+	# Was there a CUDA_PATH provided?
+	if [ -z "$CUDA_PATH" ]; then
+		get_default_cuda
+	fi
+}
+
+could_not_find_sm_arch() {
+	echo "Could not determine the sm arch of your card"
+	echo "Please provide your sm arch via SM_ARCH={your_arch} ./configure"
+	echo "Example: SM_ARCH=sm_52 ./configure"
+	exit 1
+}
+
+get_default_sm_arch() {
+	if [ -z "$CUDA_PATH/extras/demo_suite/deviceQuery" ]; then
+		could_not_find_sm_arch
+		return 0
+	fi
+	SM_ARCH="sm_$($CUDA_PATH/extras/demo_suite/deviceQuery | grep "CUDA Capability Major" | awk -e '{print $6}' | sed -e 's/\.//g' | head -n 1)"
+}
+
+get_sm_arch() {
+	if [ -z "$SM_ARCH" ]; then
+		get_default_sm_arch
+	fi
+}
+
+if [ ! -f vendor/gtest ]; then
+  git submodule update --init
+fi
+
+# Build scripts 
+if [ ! -f vendor/gtest/build/lib/libgtest.a ]; then
+  cd vendor/gtest && cmake -Bbuild -H. && make -Cbuild VERBOSE=1
+  cd -
+fi
+
+# Set compiler
+compiler=$(
+case "$COMPILER" in
+    ("clang") echo "clang";;
+    (*) echo "clang";;
+esac)
+
+arch=$ARCH
+if [ -z "$ARCH" ]; then
+	arch=$(uname -m | sed s,i[3456789]86,ia32,) 
+fi
+
+get_cuda_path
+get_sm_arch
+
+# Was there a CUDA_VERSION provided?
+cmake -Bbuild -DSM_ARCH=$SM_ARCH -DCUDA_PATH=$CUDA_PATH -DARCH=$arch -DCMAKE_TOOLCHAIN_FILE=$base_dir/toolchains/$compiler.cmake -H.

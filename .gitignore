@@ -1,0 +1,8 @@
+**.swp*
+**.bin*
+**.iso*
+**.img*
+iso
+build
+Logs
+*.vbox-prev
