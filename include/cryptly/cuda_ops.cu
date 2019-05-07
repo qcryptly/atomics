@@ -1,7 +1,7 @@
 #include <iostream>
 #include "cryptly/cuda_ops.hxx"
 
-int _r(cudaError_t err) {
+int _r(int err) {
 	if (err != cudaSuccess) {
 		std::cout << "Error: " << cudaGetErrorString(cudaError_t(err)) << std::endl;
 	}

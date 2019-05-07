@@ -3,23 +3,26 @@
 #include "cryptly/cuda_ops.hxx"
 #include "cryptly/kernels/add.hxx"
 
-TEST(add, AddTwoVectors) {
-	int N = 1<<20;
-	float *a, *b, *r;
+TEST(Test, AddTwoVectors) {
+	std::size_t N = 1<<20;
+	float *a = new float[N](),
+		  *b = new float[N](),
+		  *r = new float[N];
 
-	for (int i = 0; i < N; i++) {
-		a[i] = 2.0f;
-		b[i] = 2.0f;
-	}
+	for (int i = 0; i < N; i++)
+		{a[i] = 2.0f; b[i] = 2.0f;}
 
-	// User entire query
-
-	int block_size = 256;
-	int grid_size = (N + block_size - 1) / block_size;
-
+	std::size_t block_size = 256;
+	std::size_t grid_size = (N + block_size - 1) / block_size;
 	kernel_ps_t params{grid_size, block_size};
-	_r((add{})(params, N, a, b));
 
-	EXPECT_EQ(maxError, 0.0f);
-	return 0;
+	(add{})(params, N, a, b, r);
+	// Use assert instead of expect,
+	// don't want to keep reporting
+	// the same error
+	for (int i = 0; i < N; i++)
+		ASSERT_EQ(r[i], 4.0f);
+	delete[] a;
+	delete[] b;
+	delete[] r;
 }

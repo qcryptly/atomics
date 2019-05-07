@@ -13,6 +13,7 @@ auto peak_mem_band = [](auto bus_width, auto clock_rate) -> float {
 
 constexpr auto cuda_success{0};
 
+int _r(int);
 
 int print_devices();
 
