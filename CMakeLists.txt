@@ -10,18 +10,15 @@ endif()
 enable_testing()
 
 set(lgtestpath ${CMAKE_SOURCE_DIR}/vendor/gtest/build/lib/libgtest.a)
-set(cryptlib_pre ${CMAKE_SOURCE_DIR}/include/cryptly)
-set(cryptlib_include ${CMAKE_SOURCE_DIR}/include)
+set(wrapperlib_include ${CMAKE_SOURCE_DIR}/include)
 
-add_library(cryptlib STATIC
-	${cryptlib_pre}/cuda_ops.cu
-	${cryptlib_pre}/kernels/add.cu
-	${cryptlib_pre}/kernels/dot_product.cu
-)
+file(GLOB_RECURSE WRAPPER_FILES ${wrapperlib_include}/**/*.cu)
 
-target_include_directories(cryptlib PUBLIC ${cryptlib_include})
-target_compile_features(cryptlib PUBLIC cxx_std_14)
-set_target_properties(cryptlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+add_library(wrapperlib SHARED ${WRAPPER_FILES})
+
+target_include_directories(wrapperlib PUBLIC ${wrapperlib_include})
+target_compile_features(wrapperlib PUBLIC cxx_std_14)
+set_target_properties(wrapperlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 file(GLOB_RECURSE CUDA_TESTS ${CMAKE_SOURCE_DIR}/include/**/*spec.cxx)
 message(STATUS "Found tests: ${CUDA_TESTS}")
@@ -33,7 +30,7 @@ foreach(testpath ${CUDA_TESTS})
 	add_executable(${target} ${testpath})
 	set_property(TARGET ${target}
 			PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-	target_link_libraries(${target} PRIVATE cryptlib ${lgtestpath} ${CMAKE_THREAD_LIBS_INIT})
+	target_link_libraries(${target} PRIVATE wrapperlib ${lgtestpath} ${CMAKE_THREAD_LIBS_INIT})
 	target_include_directories(${target} SYSTEM
 			PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/vendor/gtest/googletest/include>)
 	add_test(${target} ${target})
