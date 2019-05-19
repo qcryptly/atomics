@@ -9,6 +9,8 @@ endif()
 
 enable_testing()
 
+find_package(Boost REQUIRED)
+
 set(lgtestpath ${CMAKE_SOURCE_DIR}/vendor/gtest/build/lib/libgtest.a)
 set(wrapperlib_include ${CMAKE_SOURCE_DIR}/include)
 
@@ -30,9 +32,10 @@ foreach(testpath ${CUDA_TESTS})
 	add_executable(${target} ${testpath})
 	set_property(TARGET ${target}
 			PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-	target_link_libraries(${target} PRIVATE wrapperlib ${lgtestpath} ${CMAKE_THREAD_LIBS_INIT})
 	target_include_directories(${target} SYSTEM
-			PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/vendor/gtest/googletest/include>)
+			PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/vendor/gtest/googletest/include>
+			${Boost_INCLUDE_DIRS})
+	target_link_libraries(${target} PRIVATE wrapperlib ${lgtestpath} ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
 	add_test(${target} ${target})
 endforeach()
 message(STATUS "My ${ARCH}")
