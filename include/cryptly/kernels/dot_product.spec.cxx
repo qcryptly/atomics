@@ -16,9 +16,9 @@ TEST(dot_product, DotProductSync) {
 	// Must know what the device specs are.
 	// Lets just set to 256 to keep things simple
 	constexpr auto grid_size = 256;
-	kernel_ps_t kernel{block_size, grid_size};
+	cryptly::kernel_ps_t kernel{block_size, grid_size};
 	
-	(dot_product{})(kernel, N, a, b, &r);
+	(cryptly::dot_product{})(kernel, N, a, b, &r);
 
 	// Allocate on Host
 	ASSERT_EQ(r, (N)*4);

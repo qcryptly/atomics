@@ -1,6 +1,9 @@
 #include "cryptly/cuda_ops.hxx"
 #include "cryptly/kernels/dot_product.hxx"
 
+namespace cryptly {
+inline namespace v1 {
+
 template<int BSize = 256, class TArg>
 __global__
 void dot_product_cuda(std::size_t N, const TArg* a, const TArg* b, TArg* r){
@@ -87,4 +90,7 @@ void __hack_impl_dot_product__<bool>(){
 
 void __hack_dot_product__(){
 	__hack_impl_dot_product__<primitive_types>();
+}
+
+}
 }

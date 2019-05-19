@@ -14,9 +14,9 @@ TEST(Test, AddTwoVectors) {
 
 	std::size_t block_size = 256;
 	std::size_t grid_size = (N + block_size - 1) / block_size;
-	kernel_ps_t params{grid_size, block_size};
+	cryptly::kernel_ps_t params{grid_size, block_size};
 
-	(add{})(params, N, a, b, r);
+	(cryptly::add{})(params, N, a, b, r);
 	// Use assert instead of expect,
 	// don't want to keep reporting
 	// the same error

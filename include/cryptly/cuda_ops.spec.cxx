@@ -2,5 +2,5 @@
 #include "cryptly/cuda_ops.hxx"
 
 TEST(Test, PrintDevices) {
-	EXPECT_EQ(print_devices(), 0);
+	EXPECT_EQ(cryptly::print_devices(), 0);
 }

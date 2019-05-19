@@ -1,6 +1,9 @@
 #include "cryptly/cuda_ops.hxx"
 #include "cryptly/kernels/add.hxx"
 
+namespace cryptly {
+inline namespace v1 {
+
 // Kernel function to add the elements of two arrays
 template<class TArg=int>
 __global__
@@ -57,4 +60,7 @@ void __hack_impl__<bool>(){
 
 void __hack__(){
 	__hack_impl__<primitive_types>();
+}
+
+}
 }

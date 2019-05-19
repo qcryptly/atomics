@@ -1,6 +1,9 @@
 #pragma once
 #include "cryptly/cuda_ops.hxx"
 
+namespace cryptly {
+inline namespace v1 {
+
 template<typename...>
 struct dot_product_impl {
 	void operator()(){};
@@ -15,3 +18,6 @@ struct dot_product_impl<T, Ts...> : public dot_product_impl<Ts...> {
 };
 
 struct dot_product : public dot_product_impl<primitive_types>{};
+
+}
+}

@@ -1,6 +1,9 @@
 #include <iostream>
 #include "cryptly/cuda_ops.hxx"
 
+namespace cryptly {
+inline namespace v1 {
+
 int _r(int err) {
 	if (err != cudaSuccess) {
 		std::cout << "Error: " << cudaGetErrorString(cudaError_t(err)) << std::endl;
@@ -29,3 +32,6 @@ int print_devices() {
 	}
 	return cudaSuccess;
 };
+
+}
+}

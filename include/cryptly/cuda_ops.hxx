@@ -7,6 +7,9 @@
 						std::int32_t, std::int64_t, \
 						float, double, bool
 
+namespace cryptly {
+inline namespace v1 {
+
 auto peak_mem_band = [](auto bus_width, auto clock_rate) -> float {
 	return 2.0*clock_rate*(bus_width/8)/1.0e+6;
 };
@@ -27,3 +30,6 @@ struct kernel_ps_t {
 	std::size_t shared_size{default_shared_size};
 	std::size_t cuda_stream{default_cuda_stream};
 };
+
+}
+}

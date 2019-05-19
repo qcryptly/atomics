@@ -2,6 +2,8 @@
 #include "cryptly/cuda_ops.hxx"
 
 // Stopper function
+namespace cryptly {
+inline namespace v1 {
 
 template<typename ...>
 struct add_impl {
@@ -19,3 +21,6 @@ struct add_impl<T, Ts...> : public add_impl<Ts...> {
 };
 
 struct add : public add_impl<primitive_types> {};
+
+}
+}
