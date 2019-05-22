@@ -19,14 +19,12 @@ file(GLOB_RECURSE WRAPPER_FILES ${wrapperlib_include}/**/*.cu)
 add_library(wrapperlib SHARED ${WRAPPER_FILES})
 
 target_include_directories(wrapperlib PUBLIC ${wrapperlib_include})
-target_compile_features(wrapperlib PUBLIC cxx_std_14)
 set_target_properties(wrapperlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 file(GLOB_RECURSE CUDA_TESTS ${CMAKE_SOURCE_DIR}/include/**/*spec.cxx)
 message(STATUS "Found tests: ${CUDA_TESTS}")
 
 foreach(testpath ${CUDA_TESTS})
-
 	get_filename_component(testname ${testpath} NAME_WE)
 	set(target ${testname}.spec)
 	add_executable(${target} ${testpath})
