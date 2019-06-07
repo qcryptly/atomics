@@ -20,7 +20,6 @@ using m_t = boost::rational<rational_t>;
 using atomic_t = boost::rational<rational_t>;
 using ev_t = boost::rational<rational_t>;
 
-
 struct state_s {
 	principal_t n{};	
 	orbital_t l{};	
@@ -58,6 +57,47 @@ std::size_t rational_hash(const ev_t& input) {
 using ev_vect_t = std::unordered_map<ev_t, rational_t, decltype(&rational_hash)>;
 using wfj_t = std::unordered_map<wfj_tup_t, ev_vect_t, decltype(&wfj_hash)>;
 
+ev_vect_t operator*(const ev_vect_t& vec_a, const ev_vect_t& vec_b) {
+	ev_vect_t results{};
+	for (auto p_a : vec_a) {
+		for(auto p_b : vec_b) {
+			const auto key = p_a.first * p_b.first;
+			const auto scalar = p_a.second * p_b.second;
+			if (results.find(key) == results.end()) {
+				results[key] = scalar;
+				continue;
+			}
+			results[key] = results[key] * scalar;
+		}
+	}
+	return results;
+}
+
+ev_vect_t operator+(const ev_vect_t& vec_a, const ev_vect_t& vec_b) {
+	ev_vect_t results{};
+	// Add the first vector
+	for (auto e : vec_a) {
+		auto key = e.first;
+		auto scalar = e.second;
+		if (results.find(key) == results.end()) {
+			results[key] = scalar;
+			continue;
+		}
+		results[key] += scalar;
+	}
+	// Add the second vector
+	for (auto e : vec_b) {
+		auto key = e.first;
+		auto scalar = e.second;
+		if (results.find(key) == results.end()) {
+			results[key] = scalar;
+			continue;
+		}
+		results[key] += scalar;
+	}
+	return results;
+}
+
 constexpr auto print_ev_vect = [](const auto& ev_vect){
 	double result = {};
 	for (auto& ev : ev_vect) {
@@ -74,6 +114,10 @@ constexpr auto print_wf = [](const auto& wf, auto& log){
 			<< "|" << jm_b.j << "," << jm_b.m << ">"
 			<< "\n";
 	}
+};
+
+constexpr auto print_spectrum = [](const auto& spectrum, auto& log){
+	for (auto wf : spectrum) print_wf(wf, log);
 };
 
 constexpr auto get_ev_down = [](const jm_s& j){
@@ -111,7 +155,7 @@ constexpr auto set_ev = [](auto& wfj,
 		}
 	}
 };
-constexpr auto j_down = [](const wfj_t& _wfj, j_t J, m_t M){
+constexpr auto j_down = [](const wfj_t& _wfj, const j_t J, const m_t M){
 	// Now that we have a wf lets build a new
 	// wf
 	const auto norm_const = get_total_norm_const(J, M);
@@ -130,6 +174,74 @@ constexpr auto j_down = [](const wfj_t& _wfj, j_t J, m_t M){
 	}
 	
 	return wfj;
+};
+
+template<class TKey, class TVal>
+struct matrix_s {
+	using key_t = TKey;
+	using val_t = TVal;
+
+	using state_t = std::vector<std::pair<TKey, TVal>>;
+	std::vector<state_t> _matrix{};
+	matrix_s() {};
+	~matrix_s(){};
+	void push_back(std::vector<std::pair<TKey, TVal>> mvalues){
+		_matrix.push_back(mvalues);
+	}
+	void push_back(std::pair<TKey, TVal> mvalue){
+		_matrix.push_back(mvalue);
+	}
+	const auto size() {
+		return _matrix.size();
+	}
+	// Not thread safe
+	state_t &operator[](std::size_t i){
+		return _matrix[i];
+	}
+};
+
+// Expect matrix = (n)(n)
+template <class TArg = std::int64_t>
+constexpr auto det = [](auto& matrix){
+	auto size = matrix.size();
+	TArg agg{};
+	for(auto col = 0; col < size; col ++) {
+		TArg element = col % 2 == 0 ? 1 : -1;
+		for(auto row = 0; row < size; row ++) {
+			// matrix[][].second == ev_vect_t
+			// we need to broadcast scalars to the element
+			//
+			// we also need the element to be of type ev_vect_t
+			element = (element * matrix[row][(row + col) % size].second);
+		}
+		agg = agg + element;
+	}
+	return agg;	
+};
+
+// Expect matrix = (n - 1) = (m)
+template<class TArg = std::int64_t>
+constexpr auto cross = [](auto& matrix, auto& orth_vect){
+	auto size = matrix.size();
+	TArg agg{};
+	using __matrix_t = typename std::remove_reference<decltype(matrix)>::type;
+	using __vector_t = typename std::remove_reference<decltype(orth_vect)>::type;
+	for(auto col = 0; col < size + 1; col ++) {
+		auto element = col % 2 == 0 ? 1 : -1;
+		__matrix_t sub_matrix{};
+		// Create sub matrix
+		for (auto row = 0; row < size; row ++) {
+			__vector_t new_vect{};
+			for(auto col_i = 0; col_i < size + 1; col_i ++) {
+				if (col_i != col)
+					new_vect.push_back(matrix[row][col_i]);
+			}
+			// Uses copy constructor, this is slow
+			sub_matrix.push_back(new_vect);
+		}
+		// Set our vector
+		orth_vect[col].second = det<TArg>(sub_matrix) * element;
+	}
 };
 
 template<class TArg = double>
