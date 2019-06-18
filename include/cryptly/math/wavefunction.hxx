@@ -1,19 +1,15 @@
 #pragma once
 
-#include <boost/rational.hpp>
 #include <ostream>
 
-#include "cryptly/math/rational.hxx"
 #include "cryptly/math/linear_ops.hxx"
 
 namespace cryptly::math {
 inline namespace v1 {
 
-using rational_t = std::int64_t;
-
 template<class TArg>
 struct jm_s {
-	using unit_t = cryptly::math::brational_t<TArg>;
+	using unit_t = TArg; 
 	unit_t j{};
 	unit_t m{};
 };
@@ -26,10 +22,10 @@ bool operator==(const jm_s<TArg>& a, const jm_s<TArg>& b){
 template<class TArg>
 std::size_t coupled_hash(const std::tuple<jm_s<TArg>, jm_s<TArg>>& state) {
 	auto[a, b] = state;
-	return std::hash<double>{}(boost::rational_cast<double>(a.j)) ^
-		   std::hash<double>{}(boost::rational_cast<double>(a.m)) ^
-		   std::hash<double>{}(boost::rational_cast<double>(b.j)) ^
-		   std::hash<double>{}(boost::rational_cast<double>(b.m));
+	return std::hash<double>{}(a.j) ^
+		   std::hash<double>{}(a.m) ^
+		   std::hash<double>{}(b.j) ^
+		   std::hash<double>{}(b.m);
 }
 
 template<class TArg>
@@ -43,12 +39,11 @@ constexpr auto srt_coupled = [](const TArg& a, const TArg& b){
 	return false;
 };
 
-template<class TArg = std::int64_t>
+template<class TArg = double>
 struct angular_s {
 	using jm_t = jm_s<TArg>;
-	using unit_t = cryptly::math::brational_t<TArg>;
-	using eigenvalue_t = cryptly::math::rational_s<TArg>;
-	using component_t = typename cryptly::math::rational_s<TArg>::component_t;
+	using unit_t = TArg; 
+	using eigenvalue_t = unit_t; 
 	using state_t = std::tuple<jm_t, jm_t>;
 	using state_hash_t = std::unordered_map<
 		state_t, eigenvalue_t, decltype(&coupled_hash<TArg>)>;
@@ -60,7 +55,7 @@ struct angular_s {
 
 	double eps = cryptly::math::high_eps;
 
-	angular_s(spectrum_t& spectrum, jm_t total) : 
+	angular_s(spectrum_t spectrum, jm_t total) : 
 		_spectrum{spectrum}, _total{total} {
 		_spectrum.eps = eps;
 	};
@@ -68,6 +63,10 @@ struct angular_s {
 	void set_eps(double _eps) {
 		_spectrum.eps = eps;
 		eps = _eps;
+	}
+
+	bool operator==(const angular_s& wf) const {
+		return _spectrum == wf._spectrum;
 	}
 
 	friend std::ostream &operator<<(std::ostream& os, angular_s& ang) {
@@ -86,15 +85,7 @@ struct angular_s {
 		return os;
 	}	
 	eigenvalue_t down(const jm_t& j) const {
-		return eigenvalue_t{
-			component_t{
-				// scalar
-				{1},
-				// root
-				{(j.j - j.m + 1)*(j.j + j.m)},
-				// power
-				{1,2}
-			}};
+		return eigenvalue_t{std::sqrt((j.j - j.m + 1)*(j.j + j.m))};
 	};
 
 	eigenvalue_t get_ev(state_hash_t& state_hash,
@@ -118,21 +109,21 @@ struct angular_s {
 		auto _j = _total.j;
 		auto _m = _total.m;
 		for(auto wf : _spectrum._matrix) {
-			const auto norm_const = down(jm_t{_j, _m}).invert();
+			const auto norm_const = 1.0 / down(jm_t{_j, _m});
 			_j--;
 			state_hash_t new_state{{}, coupled_hash<TArg>};
 			for (auto state : wf) {
 				auto[jm_a, jm_b] = state.first;
 				const auto scalar = state.second;
-				state_t left {{jm_a.j, jm_a.m - 1}, jm_b};
-				state_t right {jm_a, {jm_b.j, jm_b.m - 1}};
+				state_t left {{jm_a.j, jm_a.m - 1.0}, jm_b};
+				state_t right {jm_a, {jm_b.j, jm_b.m - 1.0}};
 				new_state[left] = get_ev(new_state, left, jm_a, scalar, norm_const);
 				new_state[right] = get_ev(new_state, right, jm_b, scalar, norm_const);
 			}
 			spectrum.push_back(new_state);
 		}
 		spectrum.push_back(spectrum.cross());
-		auto result = angular_s{spectrum, jm_t{_total.j, _total.m - 1}};
+		auto result = angular_s{spectrum, jm_t{_total.j, _total.m - 1.0}};
 		result.set_eps(eps);
 		return result;
 	};

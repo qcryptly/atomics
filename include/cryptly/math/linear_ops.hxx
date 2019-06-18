@@ -3,6 +3,7 @@
 #include <type_traits>
 #include <cassert>
 #include <vector>
+#include <cmath>
 
 namespace cryptly::math {
 inline namespace v1 {
@@ -25,12 +26,10 @@ struct matrix_s {
 	using val_t = TVal;
 	using par_t = std::pair<TKey, TVal>;
 	using state_t = std::vector<std::pair<TKey, TVal>>;
-	using state_double_t = std::vector<std::pair<TKey, double>>;
-	using matrix_double_t = std::vector<state_double_t>;
 	using matrix_t = std::vector<state_t>;
 	matrix_t _matrix{};
 	bool(*_srt)(const par_t&, const par_t&);
-	double eps = med_eps; 
+	TVal eps = high_eps; 
 	matrix_s(bool(*srt)(const par_t&, const par_t&)){
 		_srt = srt;
 	};
@@ -70,30 +69,22 @@ struct matrix_s {
 	}
 
 	bool operator==(const matrix_s& matrix) const {
-		return *this == matrix_double(matrix._matrix);
+		return *this == matrix._matrix;
 	}
-
-	// SFINAE to get rid of ambiguity if matrix_t and matrix_s are the
-	// same
-	template<typename TArg, typename = std::enable_if_t<not std::is_same_v<matrix_t,matrix_double_t>, TArg>>
-	bool operator==(const TArg& matrix) const {
-		return *this == matrix_double(matrix);
-	}
-
-	bool operator==(const matrix_double_t& matrix) const {
-		auto matrix_ = matrix_double(_matrix);
-		if (matrix_.size() != matrix.size()) return false;
+	bool operator==(const matrix_t& matrix) const {
+		if (_matrix.size() != matrix.size()) return false;
 		for(auto row_index = 0; row_index < _matrix.size(); ++row_index) {
-			auto row_left = matrix_[row_index];
+			auto row_left = _matrix[row_index];
 			auto row_right = matrix[row_index];
 			if(row_left.size() !=row_right.size())
 				return false;
 			for(auto col_index = 0; col_index < row_left.size(); ++col_index) {
 				auto val_left = row_left[col_index].second;
 				auto val_right = row_right[col_index].second;
+				auto key_left = row_left[col_index].first;
+				auto key_right = row_right[col_index].first;
 				auto diff = std::abs(val_left - val_right);
-				if(diff > eps) {
-					std::cout << val_left << ", " << val_right << ", " << diff << std::endl;
+				if(diff > eps or key_left != key_right) {
 					return false;
 				}
 			}
@@ -139,31 +130,7 @@ struct matrix_s {
 		}
 	}
 
-	matrix_double_t matrix_double(matrix_t matrix_) const {
-		for(auto& state : matrix_) std::sort(state.begin(), state.end(), _srt);
-		matrix_double_t matrix{};
-		for(auto _vec : matrix_) {
-			state_double_t new_vect{};	
-			for(auto _pair : _vec) 
-				new_vect.push_back({_pair.first, double(_pair.second)});
-			matrix.push_back(new_vect);
-		}
-		return matrix;
-	}
-
-	matrix_double_t matrix_double() {
-		for(auto& state : _matrix) std::sort(state.begin(), state.end(), _srt);
-		matrix_double_t matrix{};
-		for(auto _vec : _matrix) {
-			state_double_t new_vect{};	
-			for(auto _pair : _vec) 
-				new_vect.push_back({_pair.first, double(_pair.second)});
-			matrix.push_back(new_vect);
-		}
-		return matrix;
-	}
-
-	state_double_t mul(state_double_t vect, double value){
+	state_t mul(state_t vect, TVal value){
 		for(auto& el : vect) {
 			el.second *= value;
 			if (std::abs(el.second) < eps) {
@@ -173,7 +140,7 @@ struct matrix_s {
 		return vect;
 	}
 
-	state_double_t add(state_double_t vect_a, const state_double_t& vect_b){
+	state_t add(state_t vect_a, const state_t& vect_b){
 		for(int i = 0; i < vect_a.size(); ++i) {
 			auto& num = vect_a[i].second;
 			num += vect_b[i].second;
@@ -185,7 +152,7 @@ struct matrix_s {
 	}
 
 	// Creates copy of matrix... still immutable :)
-	matrix_double_t reduce_upper(matrix_double_t matrix) {
+	matrix_t reduce_upper(matrix_t matrix) {
 		// Row echelon
 		auto row_size = 0;
 		if (matrix.size() > 0) row_size = matrix[0].size();
@@ -209,7 +176,7 @@ struct matrix_s {
 	}
 
 	// Creates copy of matrix... still immutable :)
-	matrix_double_t zero_upper(matrix_double_t matrix) {
+	matrix_t zero_upper(matrix_t matrix) {
 		auto index = 0;
 		auto row_size = 0;
 		if (matrix.size() > 0)
@@ -254,92 +221,69 @@ struct matrix_s {
 		return matrix;
 	}
 
-	matrix_double_t rref() {
+	matrix_t rref() {
 		// Copy
-		matrix_double_t matrix = matrix_double();
-		matrix = zero_upper(matrix);
+		matrix_t matrix = zero_upper(_matrix);
 		matrix = reduce_upper(matrix); 
 		// Reduce leads to zero
 		return matrix;
 	}
 
-	double dot(state_double_t vec_a, state_double_t vec_b) {
+	TVal dot(state_t vec_a, state_t vec_b) {
 		assert(vec_b.size() == vec_a.size());
-		double agg{};
+		TVal agg{};
 		for(auto index = 0; index < vec_b.size(); index++) {
 			agg += vec_a[index].second * vec_b[index].second;
 		}
 		return agg;
 	}
-
-	state_t to_type(state_double_t vect) {
-		state_t new_vect{};
-		std::cout << "Going to convert" << std::endl;
-		for(auto e : vect) {
-			new_vect.push_back({e.first, TVal(e.second)});
-		}
-		return new_vect;
-	}
-	
-	state_t cross(){
-		state_double_t vect_orth{};
-		std::vector<bool> is_set{};
 		
-		auto matrix = rref();
-		
-		for(auto r : matrix) {
-		for(auto x : r) {
-			std::cout << x.second << ", ";
-		}	
-			std::cout << std::endl;
-		}
-		
-		auto row_size = 0;
-		if (matrix.size() > 0) {
-			auto row = matrix[0];
-			row_size = row.size();
-			is_set.resize(row_size);
-			vect_orth.resize(row_size);
-			std::fill(is_set.begin(),is_set.end(), false);
-			// We don't care what values are, they will be overwritten
-			// we only care about preserving key states
-			std::copy(row.begin(), row.end(), vect_orth.begin());
-		}
-		
-		for(auto row = matrix.end() - 1; row != matrix.begin() - 1; row--) {
-			auto index = 0;
-			auto leading_index = -1;
-			// on the first row
-			for (auto element : *row) {
-				if(leading_index > -1) {
-					if(not is_set[index]){
-						vect_orth[index].second = 1;
-						vect_orth[leading_index].second -= element.second;
-						is_set[index] = true;
-					} else {
-						vect_orth[leading_index].second -= vect_orth[index].second * element.second;
-					}
-				} else if (std::abs(element.second - 1.0) < eps) {
-					leading_index = index;
-					vect_orth[index].second = 0.0;
-					is_set[leading_index] = true;
-				}
-				++index;
+		state_t cross(){
+			state_t vect_orth{};
+			std::vector<bool> is_set{};
+			
+			auto matrix = rref();
+			
+			auto row_size = 0;
+			if (matrix.size() > 0) {
+				auto row = matrix[0];
+				row_size = row.size();
+				is_set.resize(row_size);
+				vect_orth.resize(row_size);
+				std::fill(is_set.begin(),is_set.end(), false);
+				// We don't care what values are, they will be overwritten
+				// we only care about preserving key states
+				std::copy(row.begin(), row.end(), vect_orth.begin());
 			}
-		}
-		for(auto x : vect_orth) {
-			std::cout << x.second << ", ";
-		}	
-		std::cout << std::endl;
-	
-		auto metric = 1.0 * dot(vect_orth, vect_orth);
-		std::cout << "check this - " << dot(vect_orth, vect_orth) << std::endl;
+			
+			for(auto row = matrix.end() - 1; row != matrix.begin() - 1; row--) {
+				auto index = 0;
+				auto leading_index = -1;
+				// on the first row
+				for (auto element : *row) {
+					if(leading_index > -1) {
+						if(not is_set[index]){
+							vect_orth[index].second = 1;
+							vect_orth[leading_index].second -= element.second;
+							is_set[index] = true;
+						} else {
+							vect_orth[leading_index].second -= vect_orth[index].second * element.second;
+						}
+					} else if (std::abs(element.second - 1.0) < eps) {
+						leading_index = index;
+						vect_orth[index].second = 0.0;
+						is_set[leading_index] = true;
+					}
+					++index;
+				}
+			}
 		
-		metric = (matrix.size() % 2 == 0 ? 1.0 : -1.0) / std::sqrt(metric);
-		vect_orth = mul(vect_orth, metric);
-		std::cout << "check this " << dot(vect_orth, vect_orth) << std::endl;
-		
-		return to_type(vect_orth);
+			auto metric = 1.0 * dot(vect_orth, vect_orth);
+			
+			metric = (matrix.size() % 2 == 0 ? 1.0 : -1.0) / std::sqrt(metric);
+			vect_orth = mul(vect_orth, metric);
+			
+			return vect_orth;
 	}
 };
 

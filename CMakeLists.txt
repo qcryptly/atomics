@@ -16,7 +16,7 @@ set(wrapperlib_include ${CMAKE_SOURCE_DIR}/include)
 
 file(GLOB_RECURSE WRAPPER_FILES ${wrapperlib_include}/**/*.cu)
 
-add_library(wrapperlib SHARED ${WRAPPER_FILES})
+add_library(wrapperlib STATIC ${WRAPPER_FILES})
 
 target_include_directories(wrapperlib PUBLIC ${wrapperlib_include})
 set_target_properties(wrapperlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

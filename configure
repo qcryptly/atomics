@@ -74,4 +74,3 @@ get_sm_arch
 
 # Was there a CUDA_VERSION provided?
 cmake -Bbuild -DSM_ARCH=$SM_ARCH -DCMAKE_CUDA_COMPILER=$CUDA_PATH/bin/nvcc -DCUDA_PATH=$CUDA_PATH -DARCH=$arch -DCMAKE_TOOLCHAIN_FILE=$base_dir/toolchains/$compiler.cmake -H.
-#cmake -Bbuild -DSM_ARCH=$SM_ARCH -DCUDA_PATH=$CUDA_PATH -DARCH=$arch -DCMAKE_TOOLCHAIN_FILE=$base_dir/toolchains/$compiler.cmake -H.
