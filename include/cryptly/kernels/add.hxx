@@ -5,22 +5,16 @@
 namespace cryptly {
 inline namespace v1 {
 
-template<typename ...>
-struct add_impl {
-	void operator()(){};
-};
+template <typename...> struct add_impl { void operator()(){}; };
 // Define and declare all possible add_impl types
-template<typename T, typename ... Ts>
+template <typename T, typename... Ts>
 struct add_impl<T, Ts...> : public add_impl<Ts...> {
-	using add_impl<Ts...>::operator();
-	
-	int operator()(const kernel_ps_t&,
-		std::size_t,
-		const T*,
-		const T*, T*);
+  using add_impl<Ts...>::operator();
+
+  int operator()(const kernel_ps_t &, std::size_t, const T *, const T *, T *);
 };
 
 struct add : public add_impl<primitive_types> {};
 
-}
-}
+} // namespace v1
+} // namespace cryptly
