@@ -45,22 +45,36 @@ TEST(Test, derivative) {
 
 TEST(Test, SingleElectronModel) {
 	using namespace cryptly::math;
+    auto ham_density_fxn = [](
+            const auto quantum_numbers,
+            const auto coordinates,
+            const auto err
+        ){
+        const auto [ro, theta, phi] = coordinates;
+        auto wf = models::wf_sem_simple(quantum_numbers);
+        const auto result = wf(coordinates);
+        const auto op_results = nm::ops::spherical_lap(wf, coordinates, err);
+        const auto ham_results = nm::ops::hamiltonian(wf, coordinates, err);
+        const auto expect = std::conj(wf(coordinates)) * ham_results;
+        return expect * std::pow(ro, 2) * std::sin(phi);
+    };
 	constexpr auto err{1.0e-6};
 	// n, l, m
 	const auto quantum_numbers = std::make_tuple(2,1,0); 
 	const auto coordinates = std::make_tuple<long double, long double, long double>(1.0, 0.4, 0.3);
-    const auto [ro, theta, phi] = coordinates;
-	auto wf = models::wf_sem_simple(quantum_numbers);
-	const auto result = wf(coordinates);
-	std::cout << "Wave function: " << result << std::endl;
-	const auto op_results = nm::ops::spherical_lap(wf, coordinates, err);
-	std::cout << "Spherical Lap applied: " << op_results << std::endl;
-    const auto ham_results = nm::ops::hamiltonian(wf, coordinates, err);
-    std::cout << "Hamiltonian applied: " << ham_results << std::endl;
-    const auto expect = std::conj(wf(coordinates)) * ham_results;
-    std::cout << "Expectation: " << expect << std::endl;
-    const auto expect_space = expect * std::pow(ro, 2) * std::sin(phi);
-    std::cout << "Expected space: " << expect_space << std::endl;
+    std::cout << "HDF: " << ham_density_fxn(quantum_numbers, coordinates, err) << std::endl;
+//    const auto [ro, theta, phi] = coordinates;
+//	auto wf = models::wf_sem_simple(quantum_numbers);
+//	const auto result = wf(coordinates);
+//	std::cout << "Wave function: " << result << std::endl;
+//	const auto op_results = nm::ops::spherical_lap(wf, coordinates, err);
+//	std::cout << "Spherical Lap applied: " << op_results << std::endl;
+//    const auto ham_results = nm::ops::hamiltonian(wf, coordinates, err);
+//    std::cout << "Hamiltonian applied: " << ham_results << std::endl;
+//    const auto expect = std::conj(wf(coordinates)) * ham_results;
+//    std::cout << "Expectation: " << expect << std::endl;
+//    const auto expect_space = expect * std::pow(ro, 2) * std::sin(phi);
+//    std::cout << "Expected space: " << expect_space << std::endl;
   // n, l, m, ro, theta, phi
 //  using fxns = cryptly::math::models::fxns;
 //  using ops = cryptly::math::models::ops;

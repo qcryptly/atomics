@@ -237,7 +237,7 @@ namespace nm {
 namespace models {
 	using scalar_t = long double;
 	using point_t = std::tuple<scalar_t, scalar_t, scalar_t>;
-	auto lag = [](std::uint64_t l, std::uint64_t n, long double ro){
+	auto lag = [](std::uint64_t n, std::uint64_t l, long double ro){
 	  return std::assoc_laguerre((2*l + 1), n - l - 1, ro) ;
 	};
 
@@ -257,11 +257,13 @@ namespace models {
 	  ) * std::exp((-1 * ro) / 2) * std::pow(ro, l);
 	};
 
+    // Simple electron model wave function
+    // W(ro) * W(theta, phi)
 	auto wf_sem_simple = [](const auto hyper_param) {
 		const auto[_n,_l,_m] = hyper_param;
 		return [n = _n, l = _l, m = _m](point_t point){
 			const auto[ro, theta, phi] = point;	
-			return wf_fact(n,l,ro) * lag(l, n, ro) * sph(l, m, theta, phi);
+			return wf_fact(n,l,ro) * lag(n, l, ro) * sph(l, m, theta, phi);
 		};
 	};
 }
